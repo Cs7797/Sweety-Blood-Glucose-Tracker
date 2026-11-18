@@ -2,7 +2,7 @@
 
 ## Current milestone
 
-Database and backend authentication are implemented. Reading endpoints, reports, the React interface and bonus features are not implemented yet.
+Database, backend authentication and authenticated reading CRUD are implemented. Reports, the React interface and bonus features are not implemented yet.
 
 The code follows the supplied car rental project: JavaScript ES modules, `client` / `server` organization, small controllers, route files, async/await and `{ success, message }` responses. Frontend work will follow its local state, `appContext`, direct Axios calls, Tailwind classes, Inter font, blue primary color and simple bordered forms.
 
@@ -43,7 +43,7 @@ npm run db:seed
 npm run dev
 ```
 
-Use `npm start` to run without watch mode. Startup checks that the users table is accessible. The initialization script creates the users table if absent; it does not migrate an existing table to a different definition.
+Use `npm start` to run without watch mode. Startup checks that the users and readings tables are accessible. Rerun `npm run db:init` after updating from the authentication milestone to create the readings table. The initialization script creates missing tables; it does not migrate an existing table to a different definition.
 
 ## Demo account
 
@@ -64,7 +64,30 @@ Registration trims names and normalizes email to lowercase. Names contain 1–80
 
 JWTs use HS256 and expire after seven days. Protected requests verify the signature, expiry and user existence. Requests cannot choose a user ID. Authentication endpoints reject query parameters and unexpected JSON fields. JSON bodies are limited to 10 KB.
 
-Errors use `{ "success": false, "message": "..." }`: 400 for invalid input, 401 for invalid credentials or sessions, 404 for unknown endpoints, 409 for duplicate email, 413 for oversized JSON and 500 for unexpected failures. Internal database errors are not exposed to clients.
+Errors use `{ "success": false, "message": "..." }`: 400 for invalid input, 401 for invalid credentials or sessions, 404 for unknown endpoints or unavailable readings, 409 for duplicate email or reading slots, 413 for oversized JSON and 500 for unexpected failures. Internal database errors are not exposed to clients.
+
+## Readings API
+
+All reading endpoints require `Authorization: Bearer <token>`.
+
+| Method | Endpoint | Input | Success |
+| --- | --- | --- | --- |
+| GET | `/api/readings` | Optional `date=YYYY-MM-DD` query | 200 and `readings` array |
+| POST | `/api/readings` | JSON `date`, `slot`, `glucose` | 201 and `reading` |
+| PUT | `/api/readings/:id` | Complete JSON `date`, `slot`, `glucose` | 200 and updated `reading` |
+| DELETE | `/api/readings/:id` | No request body | 200 and confirmation message |
+
+Example reading body:
+
+```json
+{ "date": "2026-11-18", "slot": "Morning (fasting)", "glucose": 110.5 }
+```
+
+The exact slots are `Morning (fasting)`, `After breakfast`, `After lunch` and `After dinner`. PostgreSQL enforces these slots, glucose bounds, the user foreign key and `UNIQUE (user_id, reading_date, slot)`. Each user can have at most four readings per day. Duplicate creates and conflicting edits return a friendly 409 error.
+
+Dates must be real calendar dates in exact `YYYY-MM-DD` format, from year 0001 through today in `Asia/Kolkata`. Future dates are rejected by the API. Dates are stored as PostgreSQL `DATE` and returned as date-only strings. Glucose must be a JSON number from 40 to 600 mg/dL; decimals are accepted and stored as `NUMERIC`. The client cannot submit an owner ID.
+
+Lists contain only the current user's readings, ordered by date descending and then the four slots in the order above. An empty result returns `readings: []`. Update and delete queries enforce ownership and return 404 for missing or other users' readings. Unsupported query parameters and extra body fields are rejected. Pagination is deferred until the required application works.
 
 ## Tests
 
@@ -83,18 +106,18 @@ npm test
 
 Tests require `TEST_DATABASE_URL` and do not fall back to the application database. They create a randomly named schema, run the actual Express API and SQL against PostgreSQL, then remove that schema. They generate their own JWT secret. If a test process is forcibly terminated, its test schema may require manual cleanup.
 
-The eight integration tests cover registration, password hashing, email normalization and uniqueness under concurrent registration, login, input validation, token rejection, deleted users, malformed JSON, body size, query validation, SQL parameters and repeatable initialization/seeding.
+The 18 tests cover authentication, password hashing, concurrent email and reading uniqueness, repeatable initialization/seeding, reading CRUD, ownership, invalid inputs, database constraints, date formatting, leap days and India's midnight/year boundaries.
 
 ## Implementation order and open details
 
 1. Database and backend authentication: implemented.
-2. Readings schema and authenticated CRUD: next. Confirm the assignment's four exact time-slot labels before defining their constraint.
-3. Daily, month-to-date and previous-month report endpoints, with ownership checks and date-boundary tests.
+2. Readings schema and authenticated CRUD: implemented with the assignment's exact four slot labels.
+3. Daily, month-to-date and previous-month report endpoints, with ownership checks and date-boundary tests: next.
 4. React/Vite registration, login, dashboard, reading form, date selection and reports; responsive layout and validation feedback.
 5. After required behavior works: server pagination, Recharts monthly trends, Docker Compose and React Testing Library form tests, in that order.
 
 The intended frontend folders are `client/context` and `client/src/{components,pages,assets}`. Backend folders are `server/{config,controllers,middleware,routes,database,scripts,tests}`. No ORM, service layer or UI component framework is planned.
 
-The reporting timezone and whether glucose values permit decimals still need a documented decision before implementing readings and reports. No deployment, chart, Docker or frontend test coverage is claimed in this milestone.
+The application date timezone is `Asia/Kolkata` and glucose values may contain decimals. Reports will use the same timezone for month boundaries. No deployment, chart, Docker or frontend test coverage is claimed in this milestone.
 
 Possible later improvements include authentication rate limiting and a token revocation or refresh flow. Redis caching, background jobs and doctor permissions are outside the current milestones.

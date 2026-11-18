@@ -2,7 +2,7 @@
 
 ## Current milestone
 
-Database, backend authentication and authenticated reading CRUD are implemented. Reports, the React interface and bonus features are not implemented yet.
+Database, backend authentication, authenticated reading CRUD and report endpoints are implemented. The React interface and bonus features are not implemented yet.
 
 The code follows the supplied car rental project: JavaScript ES modules, `client` / `server` organization, small controllers, route files, async/await and `{ success, message }` responses. Frontend work will follow its local state, `appContext`, direct Axios calls, Tailwind classes, Inter font, blue primary color and simple bordered forms.
 
@@ -89,6 +89,22 @@ Dates must be real calendar dates in exact `YYYY-MM-DD` format, from year 0001 t
 
 Lists contain only the current user's readings, ordered by date descending and then the four slots in the order above. An empty result returns `readings: []`. Update and delete queries enforce ownership and return 404 for missing or other users' readings. Unsupported query parameters and extra body fields are rejected. Pagination is deferred until the required application works.
 
+## Reports API
+
+All reports require `Authorization: Bearer <token>` and use only the authenticated user's readings.
+
+| Method | Endpoint | Period |
+| --- | --- | --- |
+| GET | `/api/reports/daily` | Optional `date=YYYY-MM-DD`; defaults to today |
+| GET | `/api/reports/month-to-date` | First day of the current month through today |
+| GET | `/api/reports/previous-month` | First through last day of the previous month |
+
+Today is determined in `Asia/Kolkata`. Period boundaries are inclusive and returned as `startDate` and `endDate`. Monthly endpoints do not accept date or month overrides. Daily dates use the same validation as readings.
+
+Each response contains `success: true` and a `report` object with `min`, `max`, `average` and `count`. Statistics are calculated in PostgreSQL, with the average rounded to one decimal place and returned as a JSON number. Daily reports also include a `readings` array containing `id`, `date`, `slot` and `glucose`, ordered by the four predefined slots. Daily statistics and readings are calculated in one query.
+
+With no readings, reports return HTTP 200, `count: 0`, null statistics and `message: "No readings for this period"`. Empty daily reports also contain `readings: []`.
+
 ## Tests
 
 Create a separate test database. Its database user must be allowed to create schemas:
@@ -106,18 +122,18 @@ npm test
 
 Tests require `TEST_DATABASE_URL` and do not fall back to the application database. They create a randomly named schema, run the actual Express API and SQL against PostgreSQL, then remove that schema. They generate their own JWT secret. If a test process is forcibly terminated, its test schema may require manual cleanup.
 
-The 18 tests cover authentication, password hashing, concurrent email and reading uniqueness, repeatable initialization/seeding, reading CRUD, ownership, invalid inputs, database constraints, date formatting, leap days and India's midnight/year boundaries.
+The 27 tests cover authentication, password hashing, concurrent email and reading uniqueness, repeatable initialization/seeding, reading CRUD, ownership, invalid inputs, database constraints and reports. Report tests check decimal rounding, empty periods, other users' data, inclusive month boundaries, leap February and India's midnight/month/year transitions using a controlled clock.
 
 ## Implementation order and open details
 
 1. Database and backend authentication: implemented.
 2. Readings schema and authenticated CRUD: implemented with the assignment's exact four slot labels.
-3. Daily, month-to-date and previous-month report endpoints, with ownership checks and date-boundary tests: next.
-4. React/Vite registration, login, dashboard, reading form, date selection and reports; responsive layout and validation feedback.
+3. Daily, month-to-date and previous-month report endpoints, with ownership checks and date-boundary tests: implemented.
+4. React/Vite registration, login, dashboard, reading form, date selection and reports; responsive layout and validation feedback: next.
 5. After required behavior works: server pagination, Recharts monthly trends, Docker Compose and React Testing Library form tests, in that order.
 
 The intended frontend folders are `client/context` and `client/src/{components,pages,assets}`. Backend folders are `server/{config,controllers,middleware,routes,database,scripts,tests}`. No ORM, service layer or UI component framework is planned.
 
-The application date timezone is `Asia/Kolkata` and glucose values may contain decimals. Reports will use the same timezone for month boundaries. No deployment, chart, Docker or frontend test coverage is claimed in this milestone.
+The application date timezone is `Asia/Kolkata` and glucose values may contain decimals. Reports use the same timezone for month boundaries. No deployment, chart, Docker or frontend test coverage is claimed in this milestone.
 
 Possible later improvements include authentication rate limiting and a token revocation or refresh flow. Redis caching, background jobs and doctor permissions are outside the current milestones.

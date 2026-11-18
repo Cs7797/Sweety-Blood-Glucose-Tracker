@@ -24,4 +24,15 @@ const validateDate = (date) => {
   return null;
 };
 
-export { getToday, validateDate };
+const getMonthDates = (date, previous = false) => {
+  const firstDay = new Date(`${date.slice(0, 7)}-01T00:00:00.000Z`);
+  if (!previous) {
+    return { startDate: date.slice(0, 7) + "-01", endDate: date };
+  }
+
+  firstDay.setUTCDate(0);
+  const endDate = firstDay.toISOString().slice(0, 10);
+  return { startDate: endDate.slice(0, 7) + "-01", endDate };
+};
+
+export { getToday, validateDate, getMonthDates };

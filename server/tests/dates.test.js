@@ -1,11 +1,20 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { getToday, validateDate } from "../config/dates.js";
+import { getMonthDates, getToday, validateDate } from "../config/dates.js";
 
 test("today follows India's date across UTC midnight and year boundaries", () => {
   assert.equal(getToday(new Date("2025-12-31T18:29:59Z")), "2025-12-31");
   assert.equal(getToday(new Date("2025-12-31T18:30:00Z")), "2026-01-01");
   assert.equal(getToday(new Date("2026-03-31T23:59:59Z")), "2026-04-01");
+});
+
+test("month ranges handle first days, leap years and January's previous year", () => {
+  assert.deepEqual(getMonthDates("2026-11-19"), { startDate: "2026-11-01", endDate: "2026-11-19" });
+  assert.deepEqual(getMonthDates("2026-01-01"), { startDate: "2026-01-01", endDate: "2026-01-01" });
+  assert.deepEqual(getMonthDates("2026-01-01", true), { startDate: "2025-12-01", endDate: "2025-12-31" });
+  assert.deepEqual(getMonthDates("2024-03-31", true), { startDate: "2024-02-01", endDate: "2024-02-29" });
+  assert.deepEqual(getMonthDates("2025-03-01", true), { startDate: "2025-02-01", endDate: "2025-02-28" });
+  assert.deepEqual(getMonthDates("2026-05-31", true), { startDate: "2026-04-01", endDate: "2026-04-30" });
 });
 
 test("dates require exact calendar dates and reject future days", () => {

@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useAppContext } from "../../context/appContext.jsx";
 import Title from "../components/Title.jsx";
 import { formatDate, getToday } from "../utils/dates.js";
+
+const MonthlyTrend = lazy(() => import("../components/MonthlyTrend.jsx"));
 
 const Reports = () => {
   const { axios } = useAppContext();
@@ -79,7 +81,7 @@ const Reports = () => {
               <p className="font-medium">No readings for this period.</p>
               <p className="text-gray-500 mt-2">Choose another date or add a reading from the Readings page.</p>
             </div>
-          ) : type === "daily" && (
+          ) : type === "daily" ? (
             <div className="mt-6 border border-borderColor rounded-md overflow-hidden">
               <h3 className="px-4 sm:px-5 py-4 bg-light font-medium text-gray-900">Daily readings</h3>
               <table className="w-full text-sm text-left">
@@ -87,6 +89,10 @@ const Reports = () => {
                 <tbody>{report.readings.map((reading) => <tr key={reading.id} className="border-t border-borderColor"><td className="p-4">{reading.slot}</td><td className="p-4 font-medium text-gray-900">{reading.glucose}</td></tr>)}</tbody>
               </table>
             </div>
+          ) : (
+            <Suspense fallback={<p role="status" className="py-6 text-gray-500">Loading chart…</p>}>
+              <MonthlyTrend trend={report.trend} />
+            </Suspense>
           )}
           <p className="text-sm text-gray-500 mt-5">Average is rounded to one decimal place. Report dates use India Standard Time.</p>
         </section>

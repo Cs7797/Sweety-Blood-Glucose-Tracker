@@ -26,6 +26,19 @@ export const getReport = async (req, res, next) => {
       [req.user.id, startDate, endDate],
     );
     const report = { startDate, endDate, ...rows[0] };
+    if (!daily) {
+      const { rows: trend } = await pool.query(
+        `SELECT to_char($2::date + day, 'YYYY-MM-DD') AS date,
+                round(avg(readings.glucose), 1)::float8 AS average,
+                count(readings.id)::integer AS count
+         FROM generate_series(0, $3::date - $2::date) AS days(day)
+         LEFT JOIN readings ON readings.reading_date = $2::date + day AND readings.user_id = $1
+         GROUP BY day
+         ORDER BY day`,
+        [req.user.id, startDate, endDate],
+      );
+      report.trend = trend;
+    }
     return res.json({
       success: true,
       report,

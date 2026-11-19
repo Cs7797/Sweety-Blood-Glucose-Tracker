@@ -2,7 +2,7 @@
 
 ## Current milestone
 
-The required backend and React/Vite interface are implemented: registration, login, session restoration, logout, account details, a readings dashboard with add/edit/delete controls and date filtering, and daily/monthly reports. Server-side readings pagination is also implemented. Charts, Docker Compose and automated frontend tests are not implemented yet.
+The required backend and React/Vite interface are implemented: registration, login, session restoration, logout, account details, a readings dashboard with add/edit/delete controls and date filtering, and daily/monthly reports. Server-side readings pagination and a Recharts monthly glucose trend chart are also implemented. Docker Compose and automated frontend tests are not implemented yet.
 
 The code follows the supplied car rental project: JavaScript ES modules, `client` / `server` organization, small controllers, route files, async/await and `{ success, message }` responses. Frontend work will follow its local state, `appContext`, direct Axios calls, Tailwind classes, Inter font, blue primary color and simple bordered forms.
 
@@ -65,6 +65,8 @@ The client follows the reference project's `appContext`, localStorage token and 
 Registration, invalid login, successful login, refresh, logout, reading creation/editing, duplicate feedback, date selection, empty states, report switching and mobile form/report layouts have been checked manually in a local browser against PostgreSQL. A separate preview API check added, reported and deleted a synthetic previous-month reading. There are no automated frontend tests yet.
 
 The Reports page displays daily readings and four statistics: minimum, maximum, average to one decimal and reading count. It shows the API's actual period boundaries and an empty state for periods with no data. Cancelled requests prevent an older response from replacing the selected date or report period. The readings table scrolls horizontally on small screens; forms and statistics use responsive grids.
+
+Month-to-date and previous-month reports with data also show a responsive Recharts line chart. Each point is that day's average glucose, rounded to one decimal; days without readings remain gaps. Tooltips show the date and mg/dL value, and a collapsible table lists the daily averages and reading counts. Keyboard tooltip navigation, desktop/mobile layouts and a single-reading period were checked in an isolated test schema. The chart loads only when a monthly report with data is opened.
 
 ## Demo account
 
@@ -130,6 +132,8 @@ Today is determined in `Asia/Kolkata`. Period boundaries are inclusive and retur
 
 Each response contains `success: true` and a `report` object with `min`, `max`, `average` and `count`. Statistics are calculated in PostgreSQL, with the average rounded to one decimal place and returned as a JSON number. Daily reports also include a `readings` array containing `id`, `date`, `slot` and `glucose`, ordered by the four predefined slots. Daily statistics and readings are calculated in one query.
 
+Monthly reports also include `trend`, an array ordered by date with one entry for every calendar day in the report period. Each entry contains `date`, `average` and `count`. Days without readings have `average: null` and `count: 0`. Both the trend and summary enforce ownership and the report's date boundaries, independently of readings pagination. The overall monthly average uses all readings, rather than averaging the daily averages.
+
 With no readings, reports return HTTP 200, `count: 0`, null statistics and `message: "No readings for this period"`. Empty daily reports also contain `readings: []`.
 
 ## Tests
@@ -149,7 +153,7 @@ npm test
 
 Tests require `TEST_DATABASE_URL` and do not fall back to the application database. Each integration test file uses a randomly named schema and verifies that the database connection selects it. The shared `server/tests/setup.js` starts the real Express API, generates a test JWT secret and clears the isolated tables before each test. Test files create their own users and readings. The schema is removed when the file finishes. If a test process is forcibly terminated, its test schema may require manual cleanup.
 
-The suite contains 32 integration tests and three date tests. It covers authentication, password hashing, concurrent email and reading uniqueness, repeatable initialization/seeding, reading CRUD, ownership, invalid inputs, database constraints and reports. Seven pagination tests check default/custom sizes, ordering, filtered totals, ownership, empty pages, last-page deletion and parameter validation. Report tests create the data they need and reset their controlled clock after each test. They check decimal rounding, empty periods, other users' data, inclusive month boundaries, leap February and India's midnight/month/year transitions.
+The suite contains 35 integration tests and three date tests. It covers authentication, password hashing, concurrent email and reading uniqueness, repeatable initialization/seeding, reading CRUD, ownership, invalid inputs, database constraints and reports. Seven pagination tests check default/custom sizes, ordering, filtered totals, ownership, empty pages, last-page deletion and parameter validation. Three trend tests check daily averages, missing days, ownership, period boundaries, leap day and empty periods. Report tests create the data they need and reset their controlled clock after each test. They also check decimal rounding and India's midnight/month/year transitions.
 
 Tests can also run individually. From `server`, with `TEST_DATABASE_URL` still set:
 
@@ -165,10 +169,11 @@ node --test --test-name-pattern="one user cannot list" tests/readings.test.js
 3. Daily, month-to-date and previous-month report endpoints, with ownership checks and date-boundary tests: implemented.
 4. React/Vite registration, login, dashboard, reading form, date selection and reports; responsive layout and validation feedback: implemented.
 5. Server-side readings pagination: implemented.
-6. Next bonuses: Recharts monthly trends, Docker Compose and React Testing Library form tests, in that order.
+6. Recharts monthly trends: implemented.
+7. Next bonuses: Docker Compose and React Testing Library form tests, in that order.
 
 Frontend folders are `client/context` and `client/src/{components,pages,assets,utils}`. Backend folders are `server/{config,controllers,middleware,routes,database,scripts,tests}`. No ORM, service layer or UI component framework is used.
 
-The application date timezone is `Asia/Kolkata` and glucose values may contain decimals. Reports use the same timezone for month boundaries. No deployment, chart, Docker or frontend test coverage is claimed in this milestone.
+The application date timezone is `Asia/Kolkata` and glucose values may contain decimals. Reports use the same timezone for month boundaries. No deployment, Docker or automated frontend test coverage is claimed in this milestone.
 
 Possible later improvements include authentication rate limiting and a token revocation or refresh flow. Redis caching, background jobs and doctor permissions are outside the current milestones.

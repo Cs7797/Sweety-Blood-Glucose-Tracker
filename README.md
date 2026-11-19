@@ -2,7 +2,7 @@
 
 ## Current milestone
 
-The required backend and React/Vite interface are implemented: registration, login, session restoration, logout, account details, a readings dashboard with add/edit/delete controls and date filtering, and daily/monthly reports. Bonus features are not implemented yet.
+The required backend and React/Vite interface are implemented: registration, login, session restoration, logout, account details, a readings dashboard with add/edit/delete controls and date filtering, and daily/monthly reports. Server-side readings pagination is also implemented. Charts, Docker Compose and automated frontend tests are not implemented yet.
 
 The code follows the supplied car rental project: JavaScript ES modules, `client` / `server` organization, small controllers, route files, async/await and `{ success, message }` responses. Frontend work will follow its local state, `appContext`, direct Axios calls, Tailwind classes, Inter font, blue primary color and simple bordered forms.
 
@@ -93,7 +93,7 @@ All reading endpoints require `Authorization: Bearer <token>`.
 
 | Method | Endpoint | Input | Success |
 | --- | --- | --- | --- |
-| GET | `/api/readings` | Optional `date=YYYY-MM-DD` query | 200 and `readings` array |
+| GET | `/api/readings` | Optional `date`, `page` and `limit` queries | 200, `readings` array and `pagination` |
 | POST | `/api/readings` | JSON `date`, `slot`, `glucose` | 201 and `reading` |
 | PUT | `/api/readings/:id` | Complete JSON `date`, `slot`, `glucose` | 200 and updated `reading` |
 | DELETE | `/api/readings/:id` | No request body | 200 and confirmation message |
@@ -108,7 +108,13 @@ The exact slots are `Morning (fasting)`, `After breakfast`, `After lunch` and `A
 
 Dates must be real calendar dates in exact `YYYY-MM-DD` format, from year 0001 through today in `Asia/Kolkata`. Future dates are rejected by the API. Dates are stored as PostgreSQL `DATE` and returned as date-only strings. Glucose must be a JSON number from 40 to 600 mg/dL; decimals are accepted and stored as `NUMERIC`. The client cannot submit an owner ID.
 
-Lists contain only the current user's readings, ordered by date descending and then the four slots in the order above. An empty result returns `readings: []`. Update and delete queries enforce ownership and return 404 for missing or other users' readings. Unsupported query parameters and extra body fields are rejected. Pagination is deferred until the required application works.
+Lists contain only the current user's readings, ordered by date descending and then the four slots in the order above. Update and delete queries enforce ownership and return 404 for missing or other users' readings. Unsupported query parameters and extra body fields are rejected.
+
+Pagination uses parameterized SQL `LIMIT` and `OFFSET`. `page` defaults to 1 and accepts integers from 1 to 1000000. `limit` defaults to 10 and accepts integers from 1 to 100. Empty, fractional, repeated and invalid parameters return 400. The total count applies the same authenticated user and date filter as the page query.
+
+For example, `/api/readings?page=2&limit=10` returns the second page plus `pagination: { page: 2, limit: 10, total: 11, totalPages: 2 }` when the user has 11 matching readings. Empty results have `total: 0`, `totalPages: 0` and `readings: []`. A page beyond the last page returns an empty array with the requested page number and the actual totals.
+
+The dashboard displays ten readings per page with Previous/Next controls and the total matching count. Date changes and saved readings reset it to page 1. If a deletion leaves the current page beyond the last page, it fetches the last available page. Reports still aggregate all matching readings, independently of pagination. Browser checks used an isolated test schema with 11 synthetic readings to verify page navigation, disabled controls and filter resets.
 
 ## Reports API
 
@@ -143,7 +149,7 @@ npm test
 
 Tests require `TEST_DATABASE_URL` and do not fall back to the application database. Each integration test file uses a randomly named schema and verifies that the database connection selects it. The shared `server/tests/setup.js` starts the real Express API, generates a test JWT secret and clears the isolated tables before each test. Test files create their own users and readings. The schema is removed when the file finishes. If a test process is forcibly terminated, its test schema may require manual cleanup.
 
-The suite contains 25 integration tests and three date tests. It covers authentication, password hashing, concurrent email and reading uniqueness, repeatable initialization/seeding, reading CRUD, ownership, invalid inputs, database constraints and reports. Report tests create the data they need and reset their controlled clock after each test. They check decimal rounding, empty periods, other users' data, inclusive month boundaries, leap February and India's midnight/month/year transitions.
+The suite contains 32 integration tests and three date tests. It covers authentication, password hashing, concurrent email and reading uniqueness, repeatable initialization/seeding, reading CRUD, ownership, invalid inputs, database constraints and reports. Seven pagination tests check default/custom sizes, ordering, filtered totals, ownership, empty pages, last-page deletion and parameter validation. Report tests create the data they need and reset their controlled clock after each test. They check decimal rounding, empty periods, other users' data, inclusive month boundaries, leap February and India's midnight/month/year transitions.
 
 Tests can also run individually. From `server`, with `TEST_DATABASE_URL` still set:
 
@@ -158,7 +164,8 @@ node --test --test-name-pattern="one user cannot list" tests/readings.test.js
 2. Readings schema and authenticated CRUD: implemented with the assignment's exact four slot labels.
 3. Daily, month-to-date and previous-month report endpoints, with ownership checks and date-boundary tests: implemented.
 4. React/Vite registration, login, dashboard, reading form, date selection and reports; responsive layout and validation feedback: implemented.
-5. After required behavior works: server pagination, Recharts monthly trends, Docker Compose and React Testing Library form tests, in that order.
+5. Server-side readings pagination: implemented.
+6. Next bonuses: Recharts monthly trends, Docker Compose and React Testing Library form tests, in that order.
 
 Frontend folders are `client/context` and `client/src/{components,pages,assets,utils}`. Backend folders are `server/{config,controllers,middleware,routes,database,scripts,tests}`. No ORM, service layer or UI component framework is used.
 

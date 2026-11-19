@@ -27,15 +27,37 @@ export const getReadings = async (req, res, next) => {
     const message = validateDate(date);
     if (message) return res.status(400).json({ success: false, message });
   }
+  const pageValue = req.query.page ?? "1";
+  const limitValue = req.query.limit ?? "10";
+  if (typeof pageValue !== "string" || !/^[1-9]\d*$/.test(pageValue) || Number(pageValue) > 1000000) {
+    return res.status(400).json({ success: false, message: "Page must be an integer from 1 to 1000000" });
+  }
+  if (typeof limitValue !== "string" || !/^[1-9]\d*$/.test(limitValue) || Number(limitValue) > 100) {
+    return res.status(400).json({ success: false, message: "Limit must be an integer from 1 to 100" });
+  }
+  const page = Number(pageValue);
+  const limit = Number(limitValue);
+  const offset = (page - 1) * limit;
+
   try {
+    const { rows: count } = await pool.query(
+      "SELECT count(*)::integer AS total FROM readings WHERE user_id = $1 AND ($2::date IS NULL OR reading_date = $2::date)",
+      [req.user.id, date ?? null],
+    );
     const { rows } = await pool.query(
       `SELECT id, to_char(reading_date, 'YYYY-MM-DD') AS date, slot, glucose::float8 AS glucose
        FROM readings
        WHERE user_id = $1 AND ($2::date IS NULL OR reading_date = $2::date)
-       ORDER BY reading_date DESC, array_position($3::text[], slot)`,
-      [req.user.id, date ?? null, slots],
+       ORDER BY reading_date DESC, array_position($3::text[], slot)
+       LIMIT $4 OFFSET $5`,
+      [req.user.id, date ?? null, slots, limit, offset],
     );
-    return res.json({ success: true, readings: rows });
+    const total = count[0].total;
+    return res.json({
+      success: true,
+      readings: rows,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    });
   } catch (error) {
     next(error);
   }

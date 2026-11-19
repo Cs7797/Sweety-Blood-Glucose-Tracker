@@ -48,7 +48,8 @@ test("readings preserve dates and numeric glucose values and sort by day and slo
   assert.equal(all.data.readings[0].date, getToday());
   assert.equal(all.data.readings.length, 5);
   const empty = await request("/api/readings?date=2023-01-01");
-  assert.deepEqual(empty.data, { success: true, readings: [] });
+  assert.deepEqual(empty.data.readings, []);
+  assert.deepEqual(empty.data.pagination, { page: 1, limit: 10, total: 0, totalPages: 0 });
 });
 
 test("users can update date, slot and glucose and delete their own readings", async () => {
@@ -149,7 +150,7 @@ test("query parameters, IDs and unsupported bodies are validated", async () => {
   assert.equal((await request("/api/readings?date=2025-01-01&date=2025-01-02")).status, 400);
   assert.equal((await request("/api/readings?date[]=2025-01-01")).status, 400);
   assert.equal((await request("/api/readings?user_id=1")).status, 400);
-  assert.equal((await request("/api/readings?page=1")).status, 400);
+  assert.equal((await request("/api/readings?page=1")).status, 200);
   assert.equal((await request("/api/readings?date=%27%20OR%201=1")).status, 400);
 
   assert.equal((await request("/api/readings/0", "DELETE")).status, 400);

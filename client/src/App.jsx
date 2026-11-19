@@ -4,6 +4,7 @@ import { useAppContext } from "../context/appContext.jsx";
 import Navbar from "./components/Navbar.jsx";
 import Login from "./pages/Login.jsx";
 import Account from "./pages/Account.jsx";
+import Dashboard from "./pages/Dashboard.jsx";
 
 function App() {
   const { user, isLoading, error, logout } = useAppContext();
@@ -23,7 +24,8 @@ function App() {
           <Navbar />
           <main className="max-w-6xl mx-auto px-4 md:px-8 py-8 md:py-10">
             <Routes>
-              <Route path="/" element={<Account />} />
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/account" element={<Account />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </main>

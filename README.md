@@ -2,7 +2,7 @@
 
 ## Current milestone
 
-Database, backend authentication, authenticated reading CRUD and report endpoints are implemented. The React/Vite client includes registration, login, session restoration, logout and an account view. Reading and report screens and bonus features are not implemented yet.
+Database, backend authentication, authenticated reading CRUD and report endpoints are implemented. The React/Vite client includes registration, login, session restoration, logout, account details and a readings dashboard with add/edit/delete controls and date filtering. Report screens and bonus features are not implemented yet.
 
 The code follows the supplied car rental project: JavaScript ES modules, `client` / `server` organization, small controllers, route files, async/await and `{ success, message }` responses. Frontend work will follow its local state, `appContext`, direct Axios calls, Tailwind classes, Inter font, blue primary color and simple bordered forms.
 
@@ -62,7 +62,7 @@ Run `npm run build` from `client` for a production build and `npm run preview` t
 
 The client follows the reference project's `appContext`, localStorage token and direct Axios approach. Tokens are sent as Bearer credentials, checked on reload and cleared on logout or an API 401. Account connection failures offer retry/logout controls. Form errors are displayed inline and submit buttons are disabled while requests run.
 
-Registration, invalid login, successful login, refresh and logout have been checked manually in a local browser against PostgreSQL. There are no automated frontend tests yet.
+Registration, invalid login, successful login, refresh, logout, reading creation/editing, duplicate feedback, date selection, empty states and the mobile reading form have been checked manually in a local browser against PostgreSQL. There are no automated frontend tests yet.
 
 ## Demo account
 

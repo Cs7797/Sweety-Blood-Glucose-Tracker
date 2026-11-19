@@ -101,9 +101,11 @@ The script also adds sample readings in all four slots from the start of the pre
 
 ## Screenshots
 
-[Readings](screenshots/readings.jpg) · [Monthly report](screenshots/monthly-report.jpg) · [Mobile form](screenshots/mobile-form.jpg)
+[Login](screenshots/login.jpg) · [Registration](screenshots/registration.jpg) · [Readings](screenshots/readings.jpg) · [Mobile reading form](screenshots/mobile-form.jpg)
 
-The screenshots use sample data from an isolated test database.
+[Daily report](screenshots/daily-report.jpg) · [Month-to-date report](screenshots/monthly-report.jpg) · [Previous-month report](screenshots/previous-month-report.jpg)
+
+The screenshots show the demo account with sample readings.
 
 ## Notes
 

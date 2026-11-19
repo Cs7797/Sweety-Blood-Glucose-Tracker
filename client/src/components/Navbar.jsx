@@ -13,7 +13,7 @@ const Navbar = () => {
         </div>
       </div>
       <nav aria-label="Main navigation" className="max-w-6xl mx-auto px-4 md:px-8 flex gap-6 text-sm">
-        {[{ path: "/", name: "Readings" }, { path: "/account", name: "Account" }].map((link) => (
+        {[{ path: "/", name: "Readings" }, { path: "/reports", name: "Reports" }, { path: "/account", name: "Account" }].map((link) => (
           <NavLink key={link.path} to={link.path} end className={({ isActive }) => `py-3 border-b-2 ${isActive ? "border-primary text-primary font-medium" : "border-transparent text-gray-500 hover:text-gray-900"}`}>{link.name}</NavLink>
         ))}
       </nav>

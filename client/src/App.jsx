@@ -5,6 +5,7 @@ import Navbar from "./components/Navbar.jsx";
 import Login from "./pages/Login.jsx";
 import Account from "./pages/Account.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
+import Reports from "./pages/Reports.jsx";
 
 function App() {
   const { user, isLoading, error, logout } = useAppContext();
@@ -26,6 +27,7 @@ function App() {
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/account" element={<Account />} />
+              <Route path="/reports" element={<Reports />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </main>

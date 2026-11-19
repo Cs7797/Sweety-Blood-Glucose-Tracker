@@ -2,7 +2,7 @@
 
 ## Current milestone
 
-Database, backend authentication, authenticated reading CRUD and report endpoints are implemented. The React/Vite client includes registration, login, session restoration, logout, account details and a readings dashboard with add/edit/delete controls and date filtering. Report screens and bonus features are not implemented yet.
+The required backend and React/Vite interface are implemented: registration, login, session restoration, logout, account details, a readings dashboard with add/edit/delete controls and date filtering, and daily/monthly reports. Bonus features are not implemented yet.
 
 The code follows the supplied car rental project: JavaScript ES modules, `client` / `server` organization, small controllers, route files, async/await and `{ success, message }` responses. Frontend work will follow its local state, `appContext`, direct Axios calls, Tailwind classes, Inter font, blue primary color and simple bordered forms.
 
@@ -62,7 +62,9 @@ Run `npm run build` from `client` for a production build and `npm run preview` t
 
 The client follows the reference project's `appContext`, localStorage token and direct Axios approach. Tokens are sent as Bearer credentials, checked on reload and cleared on logout or an API 401. Account connection failures offer retry/logout controls. Form errors are displayed inline and submit buttons are disabled while requests run.
 
-Registration, invalid login, successful login, refresh, logout, reading creation/editing, duplicate feedback, date selection, empty states and the mobile reading form have been checked manually in a local browser against PostgreSQL. There are no automated frontend tests yet.
+Registration, invalid login, successful login, refresh, logout, reading creation/editing, duplicate feedback, date selection, empty states, report switching and mobile form/report layouts have been checked manually in a local browser against PostgreSQL. A separate preview API check added, reported and deleted a synthetic previous-month reading. There are no automated frontend tests yet.
+
+The Reports page displays daily readings and four statistics: minimum, maximum, average to one decimal and reading count. It shows the API's actual period boundaries and an empty state for periods with no data. Cancelled requests prevent an older response from replacing the selected date or report period. The readings table scrolls horizontally on small screens; forms and statistics use responsive grids.
 
 ## Demo account
 
@@ -155,10 +157,10 @@ node --test --test-name-pattern="one user cannot list" tests/readings.test.js
 1. Database and backend authentication: implemented.
 2. Readings schema and authenticated CRUD: implemented with the assignment's exact four slot labels.
 3. Daily, month-to-date and previous-month report endpoints, with ownership checks and date-boundary tests: implemented.
-4. React/Vite registration, login, dashboard, reading form, date selection and reports; responsive layout and validation feedback: next.
+4. React/Vite registration, login, dashboard, reading form, date selection and reports; responsive layout and validation feedback: implemented.
 5. After required behavior works: server pagination, Recharts monthly trends, Docker Compose and React Testing Library form tests, in that order.
 
-The intended frontend folders are `client/context` and `client/src/{components,pages,assets}`. Backend folders are `server/{config,controllers,middleware,routes,database,scripts,tests}`. No ORM, service layer or UI component framework is planned.
+Frontend folders are `client/context` and `client/src/{components,pages,assets,utils}`. Backend folders are `server/{config,controllers,middleware,routes,database,scripts,tests}`. No ORM, service layer or UI component framework is used.
 
 The application date timezone is `Asia/Kolkata` and glucose values may contain decimals. Reports use the same timezone for month boundaries. No deployment, chart, Docker or frontend test coverage is claimed in this milestone.
 

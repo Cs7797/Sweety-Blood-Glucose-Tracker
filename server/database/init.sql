@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS readings (
         'After lunch',
         'After dinner'
     )),
-    glucose NUMERIC NOT NULL CHECK (glucose BETWEEN 40 AND 600),
+    glucose INTEGER NOT NULL CHECK (glucose BETWEEN 40 AND 600),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT readings_user_date_slot_key UNIQUE (user_id, reading_date, slot)
 );

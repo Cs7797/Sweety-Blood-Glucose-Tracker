@@ -15,8 +15,8 @@ const validateReading = (body) => {
   if (!slots.includes(body.slot)) {
     return "Select one of the four time slots";
   }
-  if (typeof body.glucose !== "number" || !Number.isFinite(body.glucose) || body.glucose < 40 || body.glucose > 600) {
-    return "Glucose must be a number from 40 to 600 mg/dL";
+  if (!Number.isInteger(body.glucose) || body.glucose < 40 || body.glucose > 600) {
+    return "Glucose must be a whole number from 40 to 600 mg/dL";
   }
   return null;
 };

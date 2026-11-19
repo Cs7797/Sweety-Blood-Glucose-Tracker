@@ -35,18 +35,18 @@ test("all report endpoints require authentication", async () => {
 test("daily report calculates decimal statistics and lists the user's readings in slot order", async () => {
   await pool.query(
     `INSERT INTO readings (user_id, reading_date, slot, glucose) VALUES
-     ($1, '2024-02-29', 'After dinner', 130.3),
-     ($1, '2024-02-29', 'Morning (fasting)', 120.2),
+     ($1, '2024-02-29', 'After dinner', 131),
+     ($1, '2024-02-29', 'Morning (fasting)', 120),
      ($2, '2024-02-29', 'After dinner', 500)`,
     [userId, otherUserId],
   );
   const { status, data } = await request("/daily?date=2024-02-29");
   assert.equal(status, 200);
   const { readings, ...summary } = data.report;
-  assert.deepEqual(summary, { startDate: "2024-02-29", endDate: "2024-02-29", min: 120.2, max: 130.3, average: 125.3, count: 2 });
+  assert.deepEqual(summary, { startDate: "2024-02-29", endDate: "2024-02-29", min: 120, max: 131, average: 125.5, count: 2 });
   assert.deepEqual(readings.map(({ date, slot, glucose }) => ({ date, slot, glucose })), [
-    { date: "2024-02-29", slot: "Morning (fasting)", glucose: 120.2 },
-    { date: "2024-02-29", slot: "After dinner", glucose: 130.3 },
+    { date: "2024-02-29", slot: "Morning (fasting)", glucose: 120 },
+    { date: "2024-02-29", slot: "After dinner", glucose: 131 },
   ]);
   assert.equal(readings.every((reading) => Number.isInteger(reading.id)), true);
   assert.deepEqual((await request("/daily/?date=2024-02-29")).data, data);
@@ -73,7 +73,7 @@ test("month-to-date includes the first day and today and excludes later dates an
     `INSERT INTO readings (user_id, reading_date, slot, glucose) VALUES
      ($1, '2024-02-29', 'Morning (fasting)', 600),
      ($1, '2024-03-01', 'Morning (fasting)', 90),
-     ($1, '2024-03-01', 'After breakfast', 110.1),
+     ($1, '2024-03-01', 'After breakfast', 110),
      ($1, '2024-03-15', 'Morning (fasting)', 200),
      ($1, '2024-03-16', 'Morning (fasting)', 600),
      ($2, '2024-03-15', 'After dinner', 500)`,
@@ -83,7 +83,7 @@ test("month-to-date includes the first day and today and excludes later dates an
   assert.equal(result.status, 200);
   const { trend, ...summary } = result.data.report;
   assert.equal(trend.length, 15);
-  assert.deepEqual(summary, { startDate: "2024-03-01", endDate: "2024-03-15", min: 90, max: 200, average: 133.4, count: 3 });
+  assert.deepEqual(summary, { startDate: "2024-03-01", endDate: "2024-03-15", min: 90, max: 200, average: 133.3, count: 3 });
   const other = await request("/month-to-date", otherUserId);
   assert.equal(other.data.report.count, 1);
   assert.equal(other.data.report.average, 500);
@@ -94,9 +94,9 @@ test("previous-month includes both boundaries of leap February and enforces owne
     `INSERT INTO readings (user_id, reading_date, slot, glucose) VALUES
      ($1, '2024-01-31', 'Morning (fasting)', 600),
      ($1, '2024-02-01', 'Morning (fasting)', 80),
-     ($1, '2024-02-28', 'Morning (fasting)', 100.1),
-     ($1, '2024-02-29', 'After dinner', 130.3),
-     ($1, '2024-02-29', 'Morning (fasting)', 120.2),
+     ($1, '2024-02-28', 'Morning (fasting)', 101),
+     ($1, '2024-02-29', 'After dinner', 131),
+     ($1, '2024-02-29', 'Morning (fasting)', 120),
      ($1, '2024-03-01', 'Morning (fasting)', 600),
      ($2, '2024-02-29', 'After dinner', 500)`,
     [userId, otherUserId],
@@ -105,7 +105,7 @@ test("previous-month includes both boundaries of leap February and enforces owne
   assert.equal(result.status, 200);
   const { trend, ...summary } = result.data.report;
   assert.equal(trend.length, 29);
-  assert.deepEqual(summary, { startDate: "2024-02-01", endDate: "2024-02-29", min: 80, max: 130.3, average: 107.7, count: 4 });
+  assert.deepEqual(summary, { startDate: "2024-02-01", endDate: "2024-02-29", min: 80, max: 131, average: 108, count: 4 });
   const other = await request("/previous-month", otherUserId);
   assert.equal(other.data.report.count, 1);
   assert.equal(other.data.report.average, 500);
@@ -136,7 +136,10 @@ test("reports reject invalid dates, repeated queries, owner overrides and unsupp
   assert.equal((await request("/daily?user_id=1")).status, 400);
   assert.equal((await request("/daily?date=%27%20OR%201=1")).status, 400);
   for (const path of ["/month-to-date", "/previous-month"]) {
-    assert.equal((await request(`${path}?date=2024-02-01`)).status, 400);
+    assert.equal((await request(`${path}?date=2024-02-01`)).status, 200);
+    assert.equal((await request(`${path}?date=2024-02-30`)).status, 400);
+    assert.equal((await request(`${path}?date=2024-03-16`)).status, 400);
+    assert.equal((await request(`${path}?date=2024-02-01&date=2024-02-02`)).status, 400);
     assert.equal((await request(`${path}?month=2024-02`)).status, 400);
     assert.equal((await request(`${path}?user_id=1`)).status, 400);
   }
@@ -146,8 +149,8 @@ test("reports reject invalid dates, repeated queries, owner overrides and unsupp
 test("monthly trends average each day's readings and leave missing days blank", async () => {
   await pool.query(
     `INSERT INTO readings (user_id, reading_date, slot, glucose) VALUES
-     ($1, '2024-03-01', 'Morning (fasting)', 100.1),
-     ($1, '2024-03-01', 'After dinner', 120.2),
+     ($1, '2024-03-01', 'Morning (fasting)', 101),
+     ($1, '2024-03-01', 'After dinner', 120),
      ($1, '2024-03-03', 'Morning (fasting)', 140)`,
     [userId],
   );
@@ -155,10 +158,10 @@ test("monthly trends average each day's readings and leave missing days blank", 
   const result = await request("/month-to-date");
   assert.equal(result.status, 200);
   assert.equal(result.data.report.trend.length, 15);
-  assert.deepEqual(result.data.report.trend[0], { date: "2024-03-01", average: 110.2, count: 2 });
+  assert.deepEqual(result.data.report.trend[0], { date: "2024-03-01", average: 110.5, count: 2 });
   assert.deepEqual(result.data.report.trend[1], { date: "2024-03-02", average: null, count: 0 });
   assert.deepEqual(result.data.report.trend[2], { date: "2024-03-03", average: 140, count: 1 });
-  assert.equal(result.data.report.average, 120.1);
+  assert.equal(result.data.report.average, 120.3);
 });
 
 test("monthly trends exclude other users and dates outside the report period", async () => {
@@ -200,7 +203,7 @@ test("month reports switch at India's midnight and handle January's previous yea
   await pool.query(
     `INSERT INTO readings (user_id, reading_date, slot, glucose) VALUES
      ($1, '2024-03-01', 'Morning (fasting)', 90),
-     ($1, '2024-03-01', 'After breakfast', 110.1),
+     ($1, '2024-03-01', 'After breakfast', 110),
      ($1, '2024-12-01', 'Morning (fasting)', 100),
      ($1, '2024-12-31', 'After dinner', 140),
      ($1, '2025-01-01', 'Morning (fasting)', 160)`,
@@ -212,7 +215,7 @@ test("month reports switch at India's midnight and handle January's previous yea
   const { trend: marchTrend, ...march } = (await request("/month-to-date")).data.report;
   assert.equal(marchTrend.length, 1);
   assert.deepEqual(march, {
-    startDate: "2024-03-01", endDate: "2024-03-01", min: 90, max: 110.1, average: 100.1, count: 2,
+    startDate: "2024-03-01", endDate: "2024-03-01", min: 90, max: 110, average: 100, count: 2,
   });
   mock.timers.setTime(new Date("2024-12-31T18:30:00Z").getTime());
   const { trend: decemberTrend, ...december } = (await request("/previous-month")).data.report;
@@ -225,4 +228,44 @@ test("month reports switch at India's midnight and handle January's previous yea
   assert.deepEqual(january, {
     startDate: "2025-01-01", endDate: "2025-01-01", min: 160, max: 160, average: 160, count: 1,
   });
+});
+
+test("month-to-date follows the selected date instead of today's month", async () => {
+  mock.timers.setTime(new Date("2026-11-19T06:00:00Z").getTime());
+  await pool.query(
+    `INSERT INTO readings (user_id, reading_date, slot, glucose) VALUES
+     ($1, '2026-09-30', 'Morning (fasting)', 600),
+     ($1, '2026-10-01', 'Morning (fasting)', 90),
+     ($1, '2026-10-15', 'Morning (fasting)', 110),
+     ($1, '2026-10-16', 'Morning (fasting)', 600),
+     ($1, '2026-11-01', 'Morning (fasting)', 600)`,
+    [userId],
+  );
+  const { data } = await request("/month-to-date?date=2026-10-15");
+  const { trend, ...summary } = data.report;
+  assert.deepEqual(summary, { startDate: "2026-10-01", endDate: "2026-10-15", min: 90, max: 110, average: 100, count: 2 });
+  assert.equal(trend.length, 15);
+  assert.equal(trend[14].date, "2026-10-15");
+});
+
+test("previous month follows a selected January date across the year boundary", async () => {
+  await pool.query(
+    `INSERT INTO readings (user_id, reading_date, slot, glucose) VALUES
+     ($1, '2023-11-30', 'Morning (fasting)', 600),
+     ($1, '2023-12-01', 'Morning (fasting)', 90),
+     ($1, '2023-12-31', 'Morning (fasting)', 110),
+     ($1, '2024-01-01', 'Morning (fasting)', 600)`,
+    [userId],
+  );
+  const { data } = await request("/previous-month?date=2024-01-15");
+  const { trend, ...summary } = data.report;
+  assert.deepEqual(summary, { startDate: "2023-12-01", endDate: "2023-12-31", min: 90, max: 110, average: 100, count: 2 });
+  assert.equal(trend.length, 31);
+  assert.equal(trend[30].date, "2023-12-31");
+});
+
+test("previous month rejects a date before the supported calendar range", async () => {
+  const result = await request("/previous-month?date=0001-01-15");
+  assert.equal(result.status, 400);
+  assert.equal(result.data.message, "Previous month is outside the supported date range");
 });

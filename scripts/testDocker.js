@@ -36,7 +36,7 @@ const token = login.data.token;
 const user = await request("/api/user/data", "GET", undefined, token);
 assert.equal(user.data.user.email, email);
 
-const body = { date: "2025-01-01", slot: "Morning (fasting)", glucose: 110.5 };
+const body = { date: "2025-01-01", slot: "Morning (fasting)", glucose: 110 };
 const created = await request("/api/readings", "POST", body, token);
 assert.equal(created.status, 201);
 const id = created.data.reading.id;

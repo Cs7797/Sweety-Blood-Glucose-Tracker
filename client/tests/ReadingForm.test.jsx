@@ -39,34 +39,34 @@ test("new readings show the selected date and the four assignment slots", () => 
 });
 
 test("adding a reading sends numeric glucose and returns the saved reading", async () => {
-  const reading = { id: 1, date: "2025-01-01", slot: "Morning (fasting)", glucose: 110.5 };
+  const reading = { id: 1, date: "2025-01-01", slot: "Morning (fasting)", glucose: 110 };
   axios.post = mock.fn(async () => ({ data: { reading, message: "Reading added" } }));
   renderForm();
 
   fireEvent.change(screen.getByLabelText("Time slot"), { target: { value: "Morning (fasting)" } });
-  fireEvent.change(screen.getByLabelText("Glucose (mg/dL)"), { target: { value: "110.5" } });
+  fireEvent.change(screen.getByLabelText("Glucose (mg/dL)"), { target: { value: "110" } });
   fireEvent.click(screen.getByRole("button", { name: "Save reading" }));
 
   await waitFor(() => assert.equal(onSave.mock.callCount(), 1));
-  assert.deepEqual(axios.post.mock.calls[0].arguments, ["/api/readings", { date: "2025-01-01", slot: "Morning (fasting)", glucose: 110.5 }]);
+  assert.deepEqual(axios.post.mock.calls[0].arguments, ["/api/readings", { date: "2025-01-01", slot: "Morning (fasting)", glucose: 110 }]);
   assert.deepEqual(onSave.mock.calls[0].arguments, [reading]);
   assert.equal(axios.put.mock.callCount(), 0);
 });
 
 test("editing a reading prefills its values and updates its API endpoint", async () => {
   const reading = { id: 7, date: "2025-01-02", slot: "After lunch", glucose: 140 };
-  const saved = { ...reading, glucose: 145.25 };
+  const saved = { ...reading, glucose: 145 };
   axios.put = mock.fn(async () => ({ data: { reading: saved, message: "Reading updated" } }));
   renderForm({ reading });
   assert.equal(screen.getByLabelText("Date").value, reading.date);
   assert.equal(screen.getByLabelText("Time slot").value, reading.slot);
   assert.equal(screen.getByLabelText("Glucose (mg/dL)").value, "140");
 
-  fireEvent.change(screen.getByLabelText("Glucose (mg/dL)"), { target: { value: "145.25" } });
+  fireEvent.change(screen.getByLabelText("Glucose (mg/dL)"), { target: { value: "145" } });
   fireEvent.click(screen.getByRole("button", { name: "Save reading" }));
 
   await waitFor(() => assert.equal(onSave.mock.callCount(), 1));
-  assert.deepEqual(axios.put.mock.calls[0].arguments, ["/api/readings/7", { date: reading.date, slot: reading.slot, glucose: 145.25 }]);
+  assert.deepEqual(axios.put.mock.calls[0].arguments, ["/api/readings/7", { date: reading.date, slot: reading.slot, glucose: 145 }]);
   assert.deepEqual(onSave.mock.calls[0].arguments, [saved]);
   assert.equal(axios.post.mock.callCount(), 0);
 });
@@ -174,4 +174,14 @@ test("cancel calls onCancel without sending an API request", () => {
   assert.equal(onCancel.mock.callCount(), 1);
   assert.equal(axios.post.mock.callCount(), 0);
   assert.equal(axios.put.mock.callCount(), 0);
+});
+
+test("decimal glucose cannot be submitted", () => {
+  renderForm();
+  fireEvent.change(screen.getByLabelText("Time slot"), { target: { value: "Morning (fasting)" } });
+  fireEvent.change(screen.getByLabelText("Glucose (mg/dL)"), { target: { value: "110.5" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save reading" }));
+  assert.equal(screen.getByLabelText("Glucose (mg/dL)").validity.stepMismatch, true);
+  assert.equal(axios.post.mock.callCount(), 0);
+  assert.equal(onSave.mock.callCount(), 0);
 });

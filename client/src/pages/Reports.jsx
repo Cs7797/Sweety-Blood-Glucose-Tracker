@@ -22,7 +22,7 @@ const Reports = () => {
       setReport(null);
       try {
         const { data } = await axios.get(`/api/reports/${type}`, {
-          params: type === "daily" ? { date } : {},
+          params: { date },
           signal: controller.signal,
         });
         setReport(data.report);
@@ -55,12 +55,10 @@ const Reports = () => {
             <option value="previous-month">Previous month</option>
           </select>
         </div>
-        {type === "daily" && (
-          <div className="w-full sm:w-auto">
-            <label htmlFor="report-date" className="block text-sm mb-1">Report date</label>
-            <input id="report-date" type="date" required min="0001-01-01" max={getToday()} value={date} onChange={(e) => setDate(e.target.value)} className="w-full border border-borderColor rounded-md px-3 py-2.5" />
-          </div>
-        )}
+        <div className="w-full sm:w-auto">
+          <label htmlFor="report-date" className="block text-sm mb-1">Report date</label>
+          <input id="report-date" type="date" required min="0001-01-01" max={getToday()} value={date} onChange={(e) => setDate(e.target.value)} className="w-full border border-borderColor rounded-md px-3 py-2.5" />
+        </div>
       </div>
       {isLoading ? <p role="status" className="py-8 text-gray-500">Loading report…</p> : error ? (
         <div className="mt-6 p-5 border border-borderColor rounded-md"><p role="alert" className="text-red-700">{error}</p><button onClick={() => setRefresh((value) => value + 1)} className="text-primary mt-3 hover:underline">Try again</button></div>

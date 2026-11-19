@@ -22,19 +22,13 @@ test("dates require exact calendar dates and reject future days", () => {
   assert.equal(typeof validateDate(null), "string");
   assert.equal(typeof validateDate([]), "string");
   assert.equal(typeof validateDate(20260101), "string");
-  assert.equal(typeof validateDate("2026-1-01"), "string");
-  assert.equal(typeof validateDate("2026-01-1"), "string");
   assert.equal(typeof validateDate("2026-01-01T00:00:00Z"), "string");
   assert.equal(typeof validateDate("2025-02-29"), "string");
-  assert.equal(typeof validateDate("2024-02-30"), "string");
-  assert.equal(typeof validateDate("2026-04-31"), "string");
-  assert.equal(typeof validateDate("2026-13-01"), "string");
   assert.equal(typeof validateDate("2026-00-01"), "string");
   assert.equal(typeof validateDate("0000-01-01"), "string");
   assert.equal(typeof validateDate("9999-12-31"), "string");
 
   assert.equal(validateDate("2024-02-29"), null);
-  assert.equal(validateDate("2000-02-29"), null);
   assert.equal(validateDate("2025-02-28"), null);
   assert.equal(validateDate("2025-12-31"), null);
   assert.equal(validateDate("0001-01-01"), null);

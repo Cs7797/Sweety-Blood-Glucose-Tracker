@@ -6,6 +6,9 @@ export const getReport = async (req, res, next) => {
   const date = req.query.date ?? getToday();
   const message = validateDate(date);
   if (message) return res.status(400).json({ success: false, message });
+  if (req.route.path === "/previous-month" && date < "0001-02-01") {
+    return res.status(400).json({ success: false, message: "Previous month is outside the supported date range" });
+  }
 
   const { startDate, endDate } = daily
     ? { startDate: date, endDate: date }

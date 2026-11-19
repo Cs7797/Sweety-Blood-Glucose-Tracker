@@ -28,8 +28,8 @@ const ReadingForm = ({ reading, date, onSave, onCancel }) => {
       return;
     }
     const glucose = Number(value.glucose);
-    if (String(value.glucose).trim() === "" || !Number.isFinite(glucose) || glucose < 40 || glucose > 600) {
-      setError("Glucose must be a number from 40 to 600 mg/dL");
+    if (String(value.glucose).trim() === "" || !Number.isInteger(glucose) || glucose < 40 || glucose > 600) {
+      setError("Glucose must be a whole number from 40 to 600 mg/dL");
       return;
     }
     setIsLoading(true);
@@ -65,10 +65,10 @@ const ReadingForm = ({ reading, date, onSave, onCancel }) => {
           </div>
           <div>
             <label htmlFor="reading-glucose" className="text-sm">Glucose (mg/dL)</label>
-            <input id="reading-glucose" type="number" inputMode="decimal" required min="40" max="600" step="any" value={value.glucose} onChange={(e) => setValue({ ...value, glucose: e.target.value })} aria-describedby="glucose-help" className="w-full px-3 py-2.5 mt-1 border border-borderColor rounded-md" />
+            <input id="reading-glucose" type="number" inputMode="numeric" required min="40" max="600" step="1" value={value.glucose} onChange={(e) => setValue({ ...value, glucose: e.target.value })} aria-describedby="glucose-help" className="w-full px-3 py-2.5 mt-1 border border-borderColor rounded-md" />
           </div>
         </fieldset>
-        <p id="glucose-help" className="text-sm text-gray-500 mt-3">Enter 40–600 mg/dL. One reading per time slot each day.</p>
+        <p id="glucose-help" className="text-sm text-gray-500 mt-3">Enter a whole number from 40–600 mg/dL. One reading per time slot each day.</p>
         {error && <p role="alert" className="text-sm text-red-700 mt-4">{error}</p>}
         <div className="flex flex-wrap gap-3 mt-5">
           <button disabled={isLoading} className="px-5 py-2.5 bg-primary hover:bg-primary-dull text-white rounded-md">{isLoading ? "Saving…" : "Save reading"}</button>

@@ -97,7 +97,7 @@ The seed script creates:
 - Email: `demo@sweety.local`
 - Password: `SweetyDemo123!`
 
-Seeding can be repeated without duplicating the account. These credentials are for development only.
+The script also adds sample readings in all four slots from the start of the previous month through today. Rerunning it only fills missing slots; existing account details and readings are kept. These credentials are for development only.
 
 ## Screenshots
 

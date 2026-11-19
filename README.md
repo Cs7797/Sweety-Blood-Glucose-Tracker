@@ -2,13 +2,13 @@
 
 ## Current milestone
 
-Database, backend authentication, authenticated reading CRUD and report endpoints are implemented. The React interface and bonus features are not implemented yet.
+Database, backend authentication, authenticated reading CRUD and report endpoints are implemented. The React/Vite client includes registration, login, session restoration, logout and an account view. Reading and report screens and bonus features are not implemented yet.
 
 The code follows the supplied car rental project: JavaScript ES modules, `client` / `server` organization, small controllers, route files, async/await and `{ success, message }` responses. Frontend work will follow its local state, `appContext`, direct Axios calls, Tailwind classes, Inter font, blue primary color and simple bordered forms.
 
 ## Requirements
 
-- Node.js 22 or newer and npm
+- Node.js 22.12 or newer and npm
 - PostgreSQL 18, used for local verification
 
 ## Setup
@@ -44,6 +44,25 @@ npm run dev
 ```
 
 Use `npm start` to run without watch mode. Startup checks that the users and readings tables are accessible. Rerun `npm run db:init` after updating from the authentication milestone to create the readings table. The initialization script creates missing tables; it does not migrate an existing table to a different definition.
+
+## Frontend setup
+
+In a second terminal, from the project root:
+
+```powershell
+Copy-Item client/.env.example client/.env
+cd client
+npm ci
+npm run dev
+```
+
+Open `http://localhost:5173`. Keep the Express server running in the first terminal. `VITE_BASE_URL` points to the Express origin and defaults to `http://localhost:3000`. The browser origin must match `CLIENT_URL` in `server/.env`; use `localhost` consistently. Restart Vite after changing frontend environment variables.
+
+Run `npm run build` from `client` for a production build and `npm run preview` to inspect it locally. Preview uses port 4173 by default; set the backend's `CLIENT_URL` to `http://localhost:4173` when using that origin. Hosting a production build requires serving `index.html` for frontend routes and configuring the API URL and allowed browser origin.
+
+The client follows the reference project's `appContext`, localStorage token and direct Axios approach. Tokens are sent as Bearer credentials, checked on reload and cleared on logout or an API 401. Account connection failures offer retry/logout controls. Form errors are displayed inline and submit buttons are disabled while requests run.
+
+Registration, invalid login, successful login, refresh and logout have been checked manually in a local browser against PostgreSQL. There are no automated frontend tests yet.
 
 ## Demo account
 

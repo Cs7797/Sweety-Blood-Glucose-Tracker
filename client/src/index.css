@@ -1,0 +1,41 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #2563eb;
+  --color-primary-dull: #1f58d8;
+  --color-light: #f1f5f9;
+  --color-borderColor: #c4c7d2;
+}
+
+* {
+  font-family: "Inter", sans-serif;
+}
+
+body {
+  margin: 0;
+  color: #374151;
+  background: #ffffff;
+}
+
+button, a, input, select {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:not(:disabled), select {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 3px;
+}
+
+input, select {
+  min-width: 0;
+}

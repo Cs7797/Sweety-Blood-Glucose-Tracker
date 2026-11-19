@@ -2,14 +2,14 @@
 
 ## Current milestone
 
-The required backend and React/Vite interface are implemented: registration, login, session restoration, logout, account details, a readings dashboard with add/edit/delete controls and date filtering, and daily/monthly reports. Server-side readings pagination and a Recharts monthly glucose trend chart are also implemented. Docker Compose and automated frontend tests are not implemented yet.
+The required backend and React/Vite interface are implemented: registration, login, session restoration, logout, account details, a readings dashboard with add/edit/delete controls and date filtering, and daily/monthly reports. Server-side readings pagination, a Recharts monthly glucose trend chart and Docker Compose are also implemented. Automated frontend tests are not implemented yet.
 
 The code follows the supplied car rental project: JavaScript ES modules, `client` / `server` organization, small controllers, route files, async/await and `{ success, message }` responses. Frontend work will follow its local state, `appContext`, direct Axios calls, Tailwind classes, Inter font, blue primary color and simple bordered forms.
 
 ## Requirements
 
-- Node.js 22.12 or newer and npm
-- PostgreSQL 18, used for local verification
+- For local development: Node.js 22.12 or newer, npm and PostgreSQL 18.
+- For Docker: Docker Desktop with Linux containers and Docker Compose. Host Node.js is needed only for the optional Docker smoke-check script.
 
 ## Setup
 
@@ -67,6 +67,46 @@ Registration, invalid login, successful login, refresh, logout, reading creation
 The Reports page displays daily readings and four statistics: minimum, maximum, average to one decimal and reading count. It shows the API's actual period boundaries and an empty state for periods with no data. Cancelled requests prevent an older response from replacing the selected date or report period. The readings table scrolls horizontally on small screens; forms and statistics use responsive grids.
 
 Month-to-date and previous-month reports with data also show a responsive Recharts line chart. Each point is that day's average glucose, rounded to one decimal; days without readings remain gaps. Tooltips show the date and mg/dL value, and a collapsible table lists the daily averages and reading counts. Keyboard tooltip navigation, desktop/mobile layouts and a single-reading period were checked in an isolated test schema. The chart loads only when a monthly report with data is opened.
+
+## Docker Compose
+
+Run these commands from the project root. On first setup:
+
+```powershell
+Copy-Item .env.docker.example .env.docker
+```
+
+Edit `.env.docker` with a database password and a random JWT secret of at least 32 characters. The random-secret command in the local setup section can generate each value. This file is ignored by Git and is separate from `server/.env` and `client/.env`.
+
+```powershell
+docker compose --env-file .env.docker up --build --detach --wait
+docker compose --env-file .env.docker exec backend npm run db:seed
+```
+
+Open `http://localhost:8080` and use the demo account below. `WEB_PORT` can change the host port. Nginx serves the production React build and proxies `/api` to Express. Only the frontend port is published, bound to localhost. The Docker database is separate from any host PostgreSQL installation.
+
+Compose waits for PostgreSQL readiness before starting the backend, and for the backend before starting the frontend. The backend runs the existing database initialization script at startup. Demo seeding is optional and can be rerun explicitly; startup does not reset demo passwords. The backend runs as the image's `node` user. Docker build contexts exclude local environment files and `node_modules`.
+
+The PostgreSQL 18 named volume is mounted at `/var/lib/postgresql`. `docker compose --env-file .env.docker down` stops and removes containers while retaining this database volume. Run `up --detach --wait` again to reuse it. Keep the database credentials in `.env.docker` consistent with that retained database; editing the environment file does not change an existing database password. `docker compose --env-file .env.docker logs --tail 50` shows service logs.
+
+With the stack running, check frontend assets, frontend routing, the API proxy, authentication, reading CRUD, pagination and a daily report:
+
+```powershell
+node scripts/testDocker.js
+```
+
+This script uses `http://localhost:8080` by default; set `DOCKER_URL` when using a different port. Each run creates a unique test account and removes its test reading after the checks pass. The test account remains in the Docker database.
+
+For the backend suite inside Docker, create the separate test database once, then run the tests:
+
+```powershell
+docker compose --env-file .env.docker exec postgres createdb -U sweety sweety_test
+docker compose --env-file .env.docker exec -e TEST_DATABASE_URL=postgresql://sweety@postgres:5432/sweety_test backend npm test
+```
+
+These tests still use isolated schemas inside `sweety_test`. No test framework or extra service is required.
+
+Verified locally: Linux image builds, all three service health checks, the Docker smoke check, all 38 backend tests inside Docker, and database persistence across `down`/`up`. Browser checks covered demo login and refreshing the production `/reports` route with session restoration.
 
 ## Demo account
 
@@ -170,10 +210,11 @@ node --test --test-name-pattern="one user cannot list" tests/readings.test.js
 4. React/Vite registration, login, dashboard, reading form, date selection and reports; responsive layout and validation feedback: implemented.
 5. Server-side readings pagination: implemented.
 6. Recharts monthly trends: implemented.
-7. Next bonuses: Docker Compose and React Testing Library form tests, in that order.
+7. Docker Compose: implemented.
+8. Next bonus: React Testing Library form tests.
 
 Frontend folders are `client/context` and `client/src/{components,pages,assets,utils}`. Backend folders are `server/{config,controllers,middleware,routes,database,scripts,tests}`. No ORM, service layer or UI component framework is used.
 
-The application date timezone is `Asia/Kolkata` and glucose values may contain decimals. Reports use the same timezone for month boundaries. No deployment, Docker or automated frontend test coverage is claimed in this milestone.
+The application date timezone is `Asia/Kolkata` and glucose values may contain decimals. Reports use the same timezone for month boundaries. Docker serves a local HTTP application; no public deployment or automated frontend test coverage is claimed.
 
 Possible later improvements include authentication rate limiting and a token revocation or refresh flow. Redis caching, background jobs and doctor permissions are outside the current milestones.

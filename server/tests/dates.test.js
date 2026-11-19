@@ -18,12 +18,27 @@ test("month ranges handle first days, leap years and January's previous year", (
 });
 
 test("dates require exact calendar dates and reject future days", () => {
-  for (const value of [undefined, null, [], 20260101, "2026-1-01", "2026-01-1", "2026-01-01T00:00:00Z", "2025-02-29", "2024-02-30", "2026-04-31", "2026-13-01", "2026-00-01", "0000-01-01", "9999-12-31"]) {
-    assert.equal(typeof validateDate(value), "string", JSON.stringify(value));
-  }
-  for (const value of ["2024-02-29", "2000-02-29", "2025-02-28", "2025-12-31", "0001-01-01", getToday()]) {
-    assert.equal(validateDate(value), null, value);
-  }
+  assert.equal(typeof validateDate(undefined), "string");
+  assert.equal(typeof validateDate(null), "string");
+  assert.equal(typeof validateDate([]), "string");
+  assert.equal(typeof validateDate(20260101), "string");
+  assert.equal(typeof validateDate("2026-1-01"), "string");
+  assert.equal(typeof validateDate("2026-01-1"), "string");
+  assert.equal(typeof validateDate("2026-01-01T00:00:00Z"), "string");
+  assert.equal(typeof validateDate("2025-02-29"), "string");
+  assert.equal(typeof validateDate("2024-02-30"), "string");
+  assert.equal(typeof validateDate("2026-04-31"), "string");
+  assert.equal(typeof validateDate("2026-13-01"), "string");
+  assert.equal(typeof validateDate("2026-00-01"), "string");
+  assert.equal(typeof validateDate("0000-01-01"), "string");
+  assert.equal(typeof validateDate("9999-12-31"), "string");
+
+  assert.equal(validateDate("2024-02-29"), null);
+  assert.equal(validateDate("2000-02-29"), null);
+  assert.equal(validateDate("2025-02-28"), null);
+  assert.equal(validateDate("2025-12-31"), null);
+  assert.equal(validateDate("0001-01-01"), null);
+  assert.equal(validateDate(getToday()), null);
   const tomorrow = new Date(`${getToday()}T00:00:00Z`);
   tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
   assert.equal(validateDate(tomorrow.toISOString().slice(0, 10)), "Date cannot be in the future");

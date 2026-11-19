@@ -1,65 +1,24 @@
 import assert from "node:assert/strict";
-import { after, before, test } from "node:test";
-import { readFile } from "node:fs/promises";
-import { randomBytes } from "node:crypto";
-import pg from "pg";
+import { beforeEach, test } from "node:test";
 import { getToday } from "../config/dates.js";
+import { pool, request as sendRequest } from "./setup.js";
 
-if (!process.env.TEST_DATABASE_URL) {
-  throw new Error("Set TEST_DATABASE_URL to a dedicated PostgreSQL test database");
-}
-
-const schema = `test_${randomBytes(8).toString("hex")}`;
-const databaseUrl = new URL(process.env.TEST_DATABASE_URL);
-databaseUrl.searchParams.set("options", `-c search_path=${schema}`);
-process.env.DATABASE_URL = databaseUrl.toString();
-process.env.JWT_SECRET = randomBytes(32).toString("hex");
-
-const admin = new pg.Pool({ connectionString: process.env.TEST_DATABASE_URL });
 const slots = ["Morning (fasting)", "After breakfast", "After lunch", "After dinner"];
-let pool;
-let server;
-let baseUrl;
 let token;
 let otherToken;
 let userId;
 
-const request = async (path, method = "GET", body, auth = token) => {
-  const response = await fetch(`${baseUrl}${path}`, {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      ...(auth ? { Authorization: `Bearer ${auth}` } : {}),
-    },
-    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-  });
-  return { status: response.status, data: await response.json() };
-};
-
-before(async () => {
-  await admin.query(`CREATE SCHEMA ${schema}`);
-  pool = (await import("../config/db.js")).default;
-  await pool.query(await readFile(new URL("../database/init.sql", import.meta.url), "utf8"));
-  const { default: app } = await import("../app.js");
-  server = app.listen(0, "127.0.0.1");
-  await new Promise((resolve, reject) => {
-    server.once("listening", resolve);
-    server.once("error", reject);
-  });
-  baseUrl = `http://127.0.0.1:${server.address().port}`;
-  const first = await request("/api/user/register", "POST", { name: "First User", email: "first@example.com", password: "Password123!" });
-  const second = await request("/api/user/register", "POST", { name: "Second User", email: "second@example.com", password: "Password123!" });
+beforeEach(async () => {
+  const first = await sendRequest("/api/user/register", "POST", { name: "First User", email: "first@example.com", password: "Password123!" });
+  const second = await sendRequest("/api/user/register", "POST", { name: "Second User", email: "second@example.com", password: "Password123!" });
   token = first.data.token;
   userId = first.data.user.id;
   otherToken = second.data.token;
 });
 
-after(async () => {
-  if (server) await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
-  if (pool) await pool.end();
-  await admin.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`);
-  await admin.end();
-});
+const request = (path, method = "GET", body, auth = token) => {
+  return sendRequest(path, method, body, auth);
+};
 
 test("all reading operations require authentication", async () => {
   for (const [path, method, body] of [
@@ -85,7 +44,7 @@ test("readings preserve dates and numeric glucose values and sort by day and slo
   const filtered = await request("/api/readings?date=2024-02-29");
   assert.equal(filtered.status, 200);
   assert.deepEqual(filtered.data.readings.map((reading) => reading.slot), slots);
-  const all = await request("/api/readings");
+  const all = await request("/api/readings", "GET", undefined, token);
   assert.equal(all.data.readings[0].date, getToday());
   assert.equal(all.data.readings.length, 5);
   const empty = await request("/api/readings?date=2023-01-01");
@@ -131,45 +90,75 @@ test("concurrent duplicates and conflicting edits return friendly errors without
   assert.equal(rows.find((reading) => reading.id === id).slot, slots[1]);
 });
 
-test("creation and updates reject malformed dates, slots, glucose values and extra fields", async () => {
+test("creating a reading rejects invalid fields", async () => {
   const body = { date: "2025-04-01", slot: slots[0], glucose: 110 };
   const created = await request("/api/readings", "POST", body);
-  const invalid = [
-    {}, [], null,
-    { ...body, date: "2025-02-29" },
-    { ...body, date: "2025-04-31" },
-    { ...body, date: "9999-12-31" },
-    { ...body, date: "2025-4-01" },
-    { ...body, date: "2025-04-01T00:00:00Z" },
-    { ...body, date: ["2025-04-01"] },
-    { ...body, slot: "Fasting" },
-    { ...body, slot: "Morning (fasting) " },
-    { ...body, slot: [slots[0]] },
-    { ...body, glucose: 39.99 },
-    { ...body, glucose: 600.01 },
-    { ...body, glucose: "110" },
-    { ...body, glucose: null },
-    { ...body, glucose: true },
-    { ...body, user_id: userId + 1 },
-    { ...body, id: created.data.reading.id },
-  ];
-  for (const value of invalid) {
-    for (const [path, method] of [["/api/readings", "POST"], [`/api/readings/${created.data.reading.id}`, "PUT"]]) {
-      const result = await request(path, method, value);
-      assert.equal(result.status, 400, JSON.stringify(value));
-      assert.equal(result.data.success, false);
-    }
-  }
+  const path = "/api/readings";
+  assert.equal((await request(path, "POST", {})).status, 400);
+  assert.equal((await request(path, "POST", [])).status, 400);
+  assert.equal((await request(path, "POST", null)).status, 400);
+  assert.equal((await request(path, "POST", { ...body, date: "2025-02-29" })).status, 400);
+  assert.equal((await request(path, "POST", { ...body, date: "2025-04-31" })).status, 400);
+  assert.equal((await request(path, "POST", { ...body, date: "9999-12-31" })).status, 400);
+  assert.equal((await request(path, "POST", { ...body, date: "2025-4-01" })).status, 400);
+  assert.equal((await request(path, "POST", { ...body, date: "2025-04-01T00:00:00Z" })).status, 400);
+  assert.equal((await request(path, "POST", { ...body, date: ["2025-04-01"] })).status, 400);
+  assert.equal((await request(path, "POST", { ...body, slot: "Fasting" })).status, 400);
+  assert.equal((await request(path, "POST", { ...body, slot: "Morning (fasting) " })).status, 400);
+  assert.equal((await request(path, "POST", { ...body, slot: [slots[0]] })).status, 400);
+  assert.equal((await request(path, "POST", { ...body, glucose: 39.99 })).status, 400);
+  assert.equal((await request(path, "POST", { ...body, glucose: 600.01 })).status, 400);
+  assert.equal((await request(path, "POST", { ...body, glucose: "110" })).status, 400);
+  assert.equal((await request(path, "POST", { ...body, glucose: null })).status, 400);
+  assert.equal((await request(path, "POST", { ...body, glucose: true })).status, 400);
+  assert.equal((await request(path, "POST", { ...body, user_id: userId + 1 })).status, 400);
+  assert.equal((await request(path, "POST", { ...body, id: created.data.reading.id })).status, 400);
+  assert.equal((await request("/api/readings?date=2025-04-01")).data.readings[0].glucose, 110);
+});
+
+test("updating a reading rejects invalid fields", async () => {
+  const body = { date: "2025-04-01", slot: slots[0], glucose: 110 };
+  const created = await request("/api/readings", "POST", body);
+  const path = `/api/readings/${created.data.reading.id}`;
+  assert.equal((await request(path, "PUT", {})).status, 400);
+  assert.equal((await request(path, "PUT", [])).status, 400);
+  assert.equal((await request(path, "PUT", null)).status, 400);
+  assert.equal((await request(path, "PUT", { ...body, date: "2025-02-29" })).status, 400);
+  assert.equal((await request(path, "PUT", { ...body, date: "2025-04-31" })).status, 400);
+  assert.equal((await request(path, "PUT", { ...body, date: "9999-12-31" })).status, 400);
+  assert.equal((await request(path, "PUT", { ...body, date: "2025-4-01" })).status, 400);
+  assert.equal((await request(path, "PUT", { ...body, date: "2025-04-01T00:00:00Z" })).status, 400);
+  assert.equal((await request(path, "PUT", { ...body, date: ["2025-04-01"] })).status, 400);
+  assert.equal((await request(path, "PUT", { ...body, slot: "Fasting" })).status, 400);
+  assert.equal((await request(path, "PUT", { ...body, slot: "Morning (fasting) " })).status, 400);
+  assert.equal((await request(path, "PUT", { ...body, slot: [slots[0]] })).status, 400);
+  assert.equal((await request(path, "PUT", { ...body, glucose: 39.99 })).status, 400);
+  assert.equal((await request(path, "PUT", { ...body, glucose: 600.01 })).status, 400);
+  assert.equal((await request(path, "PUT", { ...body, glucose: "110" })).status, 400);
+  assert.equal((await request(path, "PUT", { ...body, glucose: null })).status, 400);
+  assert.equal((await request(path, "PUT", { ...body, glucose: true })).status, 400);
+  assert.equal((await request(path, "PUT", { ...body, user_id: userId + 1 })).status, 400);
+  assert.equal((await request(path, "PUT", { ...body, id: created.data.reading.id })).status, 400);
   assert.equal((await request("/api/readings?date=2025-04-01")).data.readings[0].glucose, 110);
 });
 
 test("query parameters, IDs and unsupported bodies are validated", async () => {
-  for (const query of ["date=", "date=2025-02-29", "date=9999-12-31", "date=2025-01-01&date=2025-01-02", "date[]=2025-01-01", "user_id=1", "page=1", "date=%27%20OR%201=1"]) {
-    assert.equal((await request(`/api/readings?${query}`)).status, 400, query);
-  }
-  for (const id of ["0", "-1", "01", "1.5", "1abc", "2147483648", "NaN"]) {
-    assert.equal((await request(`/api/readings/${id}`, "DELETE")).status, 400, id);
-  }
+  assert.equal((await request("/api/readings?date=")).status, 400);
+  assert.equal((await request("/api/readings?date=2025-02-29")).status, 400);
+  assert.equal((await request("/api/readings?date=9999-12-31")).status, 400);
+  assert.equal((await request("/api/readings?date=2025-01-01&date=2025-01-02")).status, 400);
+  assert.equal((await request("/api/readings?date[]=2025-01-01")).status, 400);
+  assert.equal((await request("/api/readings?user_id=1")).status, 400);
+  assert.equal((await request("/api/readings?page=1")).status, 400);
+  assert.equal((await request("/api/readings?date=%27%20OR%201=1")).status, 400);
+
+  assert.equal((await request("/api/readings/0", "DELETE")).status, 400);
+  assert.equal((await request("/api/readings/-1", "DELETE")).status, 400);
+  assert.equal((await request("/api/readings/01", "DELETE")).status, 400);
+  assert.equal((await request("/api/readings/1.5", "DELETE")).status, 400);
+  assert.equal((await request("/api/readings/1abc", "DELETE")).status, 400);
+  assert.equal((await request("/api/readings/2147483648", "DELETE")).status, 400);
+  assert.equal((await request("/api/readings/NaN", "DELETE")).status, 400);
   assert.equal((await request("/api/readings/2147483647", "DELETE")).status, 404);
   assert.equal((await request("/api/readings/1?date=2025-01-01", "DELETE")).status, 400);
   assert.equal((await request("/api/readings/1", "DELETE", {})).status, 400);

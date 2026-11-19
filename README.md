@@ -120,9 +120,16 @@ $env:TEST_DATABASE_URL = 'postgresql://postgres:your_password@localhost:5432/swe
 npm test
 ```
 
-Tests require `TEST_DATABASE_URL` and do not fall back to the application database. They create a randomly named schema, run the actual Express API and SQL against PostgreSQL, then remove that schema. They generate their own JWT secret. If a test process is forcibly terminated, its test schema may require manual cleanup.
+Tests require `TEST_DATABASE_URL` and do not fall back to the application database. Each integration test file uses a randomly named schema and verifies that the database connection selects it. The shared `server/tests/setup.js` starts the real Express API, generates a test JWT secret and clears the isolated tables before each test. Test files create their own users and readings. The schema is removed when the file finishes. If a test process is forcibly terminated, its test schema may require manual cleanup.
 
-The 27 tests cover authentication, password hashing, concurrent email and reading uniqueness, repeatable initialization/seeding, reading CRUD, ownership, invalid inputs, database constraints and reports. Report tests check decimal rounding, empty periods, other users' data, inclusive month boundaries, leap February and India's midnight/month/year transitions using a controlled clock.
+The suite contains 25 integration tests and three date tests. It covers authentication, password hashing, concurrent email and reading uniqueness, repeatable initialization/seeding, reading CRUD, ownership, invalid inputs, database constraints and reports. Report tests create the data they need and reset their controlled clock after each test. They check decimal rounding, empty periods, other users' data, inclusive month boundaries, leap February and India's midnight/month/year transitions.
+
+Tests can also run individually. From `server`, with `TEST_DATABASE_URL` still set:
+
+```powershell
+node --test tests/readings.test.js
+node --test --test-name-pattern="one user cannot list" tests/readings.test.js
+```
 
 ## Implementation order and open details
 

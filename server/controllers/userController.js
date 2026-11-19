@@ -19,11 +19,15 @@ const validateUser = (body, register) => {
     return "Unexpected field in request body";
   }
 
-  if (register && (typeof body.name !== "string" || !body.name.trim() || body.name.trim().length > 80)) {
-    return "Name must contain 1 to 80 characters";
+  if (register && (typeof body.name !== "string" || !body.name.trim() || body.name.includes("\0") || body.name.trim().length > 80)) {
+    return "Enter a valid name of 1 to 80 characters";
   }
 
-  if (typeof body.email !== "string" || body.email.trim().length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email.trim())) {
+  if (typeof body.email !== "string") {
+    return "Enter a valid email address";
+  }
+  const email = body.email.trim().toLowerCase();
+  if (email.length > 254 || email.includes("\0") || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return "Enter a valid email address";
   }
 

@@ -2,7 +2,7 @@
 
 ## Current milestone
 
-The required backend and React/Vite interface are implemented: registration, login, session restoration, logout, account details, a readings dashboard with add/edit/delete controls and date filtering, and daily/monthly reports. Server-side readings pagination, a Recharts monthly glucose trend chart and Docker Compose are also implemented. Automated frontend tests are not implemented yet.
+The required backend and React/Vite interface are implemented: registration, login, session restoration, logout, account details, a readings dashboard with add/edit/delete controls and date filtering, and daily/monthly reports. Server-side readings pagination, a Recharts monthly glucose trend chart, Docker Compose and React Testing Library reading-form tests are also implemented.
 
 The code follows the supplied car rental project: JavaScript ES modules, `client` / `server` organization, small controllers, route files, async/await and `{ success, message }` responses. Frontend work will follow its local state, `appContext`, direct Axios calls, Tailwind classes, Inter font, blue primary color and simple bordered forms.
 
@@ -62,7 +62,7 @@ Run `npm run build` from `client` for a production build and `npm run preview` t
 
 The client follows the reference project's `appContext`, localStorage token and direct Axios approach. Tokens are sent as Bearer credentials, checked on reload and cleared on logout or an API 401. Account connection failures offer retry/logout controls. Form errors are displayed inline and submit buttons are disabled while requests run.
 
-Registration, invalid login, successful login, refresh, logout, reading creation/editing, duplicate feedback, date selection, empty states, report switching and mobile form/report layouts have been checked manually in a local browser against PostgreSQL. A separate preview API check added, reported and deleted a synthetic previous-month reading. There are no automated frontend tests yet.
+Registration, invalid login, successful login, refresh, logout, reading creation/editing, duplicate feedback, date selection, empty states, report switching and mobile form/report layouts have been checked manually in a local browser against PostgreSQL. A separate preview API check added, reported and deleted a synthetic previous-month reading. Automated frontend tests cover the reading form.
 
 The Reports page displays daily readings and four statistics: minimum, maximum, average to one decimal and reading count. It shows the API's actual period boundaries and an empty state for periods with no data. Cancelled requests prevent an older response from replacing the selected date or report period. The readings table scrolls horizontally on small screens; forms and statistics use responsive grids.
 
@@ -178,6 +178,8 @@ With no readings, reports return HTTP 200, `count: 0`, null statistics and `mess
 
 ## Tests
 
+### Backend
+
 Create a separate test database. Its database user must be allowed to create schemas:
 
 ```powershell
@@ -202,6 +204,26 @@ node --test tests/readings.test.js
 node --test --test-name-pattern="one user cannot list" tests/readings.test.js
 ```
 
+### Reading form
+
+From `client`:
+
+```powershell
+npm test
+node --test --test-name-pattern="adding a reading" tests/run.js
+```
+
+The 11 React Testing Library tests use `node:test` and `node:assert/strict`. They cover the four slots and initial values, numeric create/update requests, required fields, glucose bounds including 40 and 600, future dates, duplicate/network errors, disabled controls and duplicate submission while saving, and Cancel.
+
+`tests/setup.js` provides a jsdom document. `tests/run.js` uses the existing Vite toolchain to load JSX and `import.meta.env`, then Node's test runner executes `tests/ReadingForm.test.jsx`. Its cache is separate from the development server's cache. Tests supply mocked Axios through the existing context, find fields by label and buttons by role, and reset the DOM and mocks after each test. No running backend or database is needed.
+
+All 11 tests passed individually and together, including under Node 22 in Docker. These component tests check form behavior and HTML constraint validation, not browser layout or the native date-picker interface. To reproduce the Docker run, from the project root:
+
+```powershell
+docker build --target build -t sweety-form-tests ./client
+docker run --rm sweety-form-tests npm test
+```
+
 ## Implementation order and open details
 
 1. Database and backend authentication: implemented.
@@ -211,10 +233,10 @@ node --test --test-name-pattern="one user cannot list" tests/readings.test.js
 5. Server-side readings pagination: implemented.
 6. Recharts monthly trends: implemented.
 7. Docker Compose: implemented.
-8. Next bonus: React Testing Library form tests.
+8. React Testing Library form tests: implemented.
 
 Frontend folders are `client/context` and `client/src/{components,pages,assets,utils}`. Backend folders are `server/{config,controllers,middleware,routes,database,scripts,tests}`. No ORM, service layer or UI component framework is used.
 
-The application date timezone is `Asia/Kolkata` and glucose values may contain decimals. Reports use the same timezone for month boundaries. Docker serves a local HTTP application; no public deployment or automated frontend test coverage is claimed.
+The application date timezone is `Asia/Kolkata` and glucose values may contain decimals. Reports use the same timezone for month boundaries. Docker serves a local HTTP application; no public deployment is claimed. Automated frontend coverage is limited to the reading form.
 
 Possible later improvements include authentication rate limiting and a token revocation or refresh flow. Redis caching, background jobs and doctor permissions are outside the current milestones.
